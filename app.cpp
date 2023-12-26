@@ -90,6 +90,8 @@ int main(int argc, char *argv[]) {
     int burst,arrival,priority;
     bool p_mode = false;
     int option;
+    FILE *input_file = fopen(input_fname, "r");
+    FILE *output_file = fopen(output_fname, "w"); 
 
     while(1){
     printf("                    CPU Scheduler Simulator");
@@ -121,39 +123,41 @@ int main(int argc, char *argv[]) {
                 p_mode = true;
             }
             break;
-        case 3:
-            FILE *input_file = fopen(input_fname, "r");
+        case 3: 
             if (input_file == NULL) {
                 printf("Error opening input file\n");
-                return 1;
+                exit(1);
             }
-            FILE *output_file = fopen(output_fname, "w");
             if (output_file == NULL) {
                 printf("Error opening output file\n");
-                return 1;
+                exit(1);
             }
 
-            while (fscanf(input_file, "%d:%d:%d\n", &burst, &arrival, &priority) != EOF) {
-                insert_sorted_process(&header, burst, arrival, priority);
+            while (fscanf(input_file, "%d:%d:%d\n", &burst, &arrival, &priority) != EOF) { // read processes data from file
+                insert_process(&header, burst, arrival, priority);
             }
 
             if(method == fcfs){
                 first_come_first_served();
+                break;
             }else if(method == sjf){
                 shortest_job_first();
+                break;
             }else if(method == p){
                 priority_sch();
+                break;
             }else if(method == rr){
                 p_mode = false;
                 round_robin(q_value);
+                break;
             }
             break;
-        // case 4:
-        //     exit(0);
-        //     break;
-        // default:
-        //     printf("invalid input, pick an option from 1-4\n");
-        //     break;
+        case 4:
+            exit(0);
+            break;
+        default:
+            printf("invalid input, pick an option from 1-4\n");
+            break;
     }
     }
 
