@@ -38,7 +38,8 @@ process *createProcess(int brust, int arrival, int priority){
 
 void insert_process(process **header, int brust, int arrival, int priority) { // taking values from input file, sorted accoeding to arrival time
     Process *new_p = createProcess(brust, arrival, priority);
-    if (*header == NULL) {
+    if (*header == NULL || new_p->arrival_time < (*header)->arrival_time) {
+        new_p->next = *header;
         *header = new_p;
         printf("inserted");
         return;
@@ -54,7 +55,7 @@ void insert_process(process **header, int brust, int arrival, int priority) { //
     current->next = new_p;
     printf("inserted");
     return;
-} // logical error in sorting the first entered node (ariival time) 
+}
 
 
 int main(int argc, char *argv[]) {
