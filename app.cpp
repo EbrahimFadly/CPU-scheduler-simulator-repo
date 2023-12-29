@@ -19,7 +19,7 @@ void shortest_job_first(Process *header);
 void priority_sch(Process *header);
 void round_robin(Process *header, int Q_value);
 void preemptive_mode(); 
-void show_output(Process *header, char *method, bool p_mode);
+void show_output(Process *header, char *method, bool p_mode, FILE *output_file);
 
 
 int order = 1;
@@ -36,12 +36,11 @@ process *createProcess(int brust, int arrival, int priority){
     return node;
 }
 
-void insert_process(process **header, int brust, int arrival, int priority) { // taking values from input file, sorted accoeding to arrival time
+void sort_process_arrival(process **header, int brust, int arrival, int priority) { // taking values from input file, sorted accoeding to arrival time
     Process *new_p = createProcess(brust, arrival, priority);
     if (*header == NULL || new_p->arrival_time < (*header)->arrival_time) {
         new_p->next = *header;
         *header = new_p;
-        printf("inserted");
         return;
     }
     Process *current = *header;
@@ -53,7 +52,6 @@ void insert_process(process **header, int brust, int arrival, int priority) { //
         new_p->next = next;
     }
     current->next = new_p;
-    printf("inserted");
     return;
 }
 
@@ -90,16 +88,20 @@ int main(int argc, char *argv[]) {
                 exit(1);
         }
     }
-    printf("%s, %s", input_fname, output_fname);
 
     Process *header = NULL;
     int burst,arrival,priority;
     bool p_mode = false;
     int option;
+    
+    FILE *input_file = fopen(input_fname, "r");
+    while (fscanf(input_file, "%d:%d:%d\n", &burst, &arrival, &priority) != EOF) {
+                sort_process_arrival(&header, burst, arrival, priority);
+    }
+    fclose(input_file);
 
     while(1){
-    FILE *input_file = fopen(input_fname, "r");
-    FILE *output_file = fopen(output_fname, "w"); 
+    FILE *output_file = fopen(output_fname, "a"); 
     printf("                    CPU Scheduler Simulator");
     printf("\n1) Scheduling Method (%s)\n2) Preemptive Mode (%s)\n3) Show Results\n4) End Program", method, p_mode? "On":"Off");
     printf("\noption > ");
@@ -126,7 +128,6 @@ int main(int argc, char *argv[]) {
             p_mode = !p_mode;
             break;
         case 3:     
-            printf("reached");
             if (input_file == NULL) {
                 printf("Error opening input file\n");
                 exit(1);
@@ -135,16 +136,11 @@ int main(int argc, char *argv[]) {
                 printf("Error opening output file\n");
                 exit(1);
             }
-            printf("reached");
-            while (fscanf(input_file, "%d:%d:%d\n", &burst, &arrival, &priority) != EOF) { // read processes data from file
-                printf("reached");
-                insert_process(&header, burst, arrival, priority);
-            }
 
             if(method == fcfs){
                 p_mode = false;
                 first_come_first_served(header);
-                show_output(header, method, p_mode);
+                show_output(header, method, p_mode, output_file);
             }else if(method == sjf){
                 shortest_job_first(header);
             }else if(method == p){
@@ -153,9 +149,7 @@ int main(int argc, char *argv[]) {
                 p_mode = false;
                 round_robin(header, q_value);
             }
-            fclose(input_file);
             fclose(output_file);
-            printf("\nclosed");
             break;
         case 4:
             exit(0);
@@ -169,7 +163,19 @@ int main(int argc, char *argv[]) {
 }
 
     void first_come_first_served(Process *header) {
-        
+        Process *current = header;
+        int total_t = 0;
+        while(current){
+            if(total_t >= current->arrival_time){ 
+                current->waiting_time = 0;
+            }else{
+                current->waiting_time = current->arrival_time - total_t;
+                total_t = current->waiting_time + total_t;
+            }
+            printf("\n%d", current->waiting_time);
+            total_t = current->brust_time + total_t;
+            current = current->next; 
+        }
     }
 
     void shortest_job_first(Process *header) {
@@ -192,6 +198,19 @@ int main(int argc, char *argv[]) {
     }
 
     
-    void show_output(Process *header, char *method, bool p_mode) {
-        
+    void show_output(Process *header, char *method, bool p_mode, FILE *output_file) {
+        Process *current = header;
+        fprintf(output_file, "\noutputs%d\n");
+        printf("\nScheduling Method: %s %s\n", method, p_mode ? "Preemptive" : "Non preemptive");
+        printf("Process Waiting Times:\n");
+        int total_wait = 0, count = 0;
+        while (current) {
+            total_wait += current->waiting_time;
+            printf("P%d %d ms\n", current->order, current->waiting_time);
+            fprintf(output_file, "P%d %d ms\n", current->order, current->waiting_time);
+            current = current->next;
+            count++;
+        }
+        float avg_wait = total_wait / count;
+        printf("Average Waiting Time: %.2f ms\n", avg_wait);
     }
