@@ -15,12 +15,12 @@ typedef struct process{
 void scheduling_method();
 void normal_scheduling();
 void first_come_first_served(Process *header);
-void shortest_job_first(Process *header);
+Process *shortest_job_first(Process *header);
 void priority_sch(Process *header);
 void round_robin(Process *header, int Q_value);
 void preemptive_mode(); 
 void show_output(Process *header, char *method, bool p_mode, FILE *output_file);
-
+Process *find_shortest_process(Process *header);
 
 int order = 1;
 
@@ -54,6 +54,7 @@ void sort_process_arrival(process **header, int brust, int arrival, int priority
     current->next = new_p;
     return;
 }
+
 
 
 int main(int argc, char *argv[]) {
@@ -142,7 +143,7 @@ int main(int argc, char *argv[]) {
                 first_come_first_served(header);
                 show_output(header, method, p_mode, output_file);
             }else if(method == sjf){
-                shortest_job_first(header);
+                show_output(shortest_job_first(header), method, p_mode, output_file);                
             }else if(method == p){
                 priority_sch(header);
             }else if(method == rr){
@@ -178,9 +179,58 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    void shortest_job_first(Process *header) {
+    Process *find_shortest_process(Process *header){
         Process *current = header;
+        while(current->next){
+            if(current->brust_time < current->next->brust_time){
+                current = current->next->next;
+                printf("\nsorted\n");
+            }else{
+                printf("\nsorted\n");
+                current->next = current->next->next;
+            }
+        }
+        return current;
+    }
+
+    Process *shortest_job_first(Process *header) {
         int total_t = 0;
+        Process *tmp_list = NULL, *tmp_list_start = NULL;
+        Process *current = header;
+        while(current){
+            if(tmp_list == NULL){
+                tmp_list = find_shortest_process(header);
+                tmp_list_start = find_shortest_process(header);
+            }else{
+                tmp_list->next = find_shortest_process(header);
+                tmp_list = tmp_list->next;
+            }
+            current = current->next;
+        }
+        // while(current->next){ // sorting tmp_list based on shortest job 
+        //     if(current->brust_time > current->next->brust_time){
+        //         tmp = current->next;
+        //         current->next = current->next->next;
+        //         tmp->next = current;
+        //         printf("sorted");
+        //     }else{
+        //         current = current->next;
+        //     }
+        // }
+        // current = tmp_list;
+        current = tmp_list_start;
+        while(current){
+            if(total_t >= current->arrival_time){ 
+                current->waiting_time = 0;
+            }else{
+                current->waiting_time = current->arrival_time - total_t;
+                total_t = current->waiting_time + total_t;
+            }
+            printf("\n%d", current->waiting_time);
+            total_t = current->brust_time + total_t;
+            current = current->next; 
+        }
+        return tmp_list;
     }
 
     void priority_sch(Process *header) {
