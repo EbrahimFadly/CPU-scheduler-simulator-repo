@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <getopt.h>
+#include <memory>
 
 typedef struct process{
     int brust_time;
@@ -23,7 +24,7 @@ void show_output(Process *header, char *method, bool p_mode, FILE *output_file);
 // Process *find_shortest_process(Process *header);
 // Process *find_priority_process(Process *header);
 
-int order = 1;
+static int order = 1;
 
 process *createProcess(int brust, int arrival, int priority){
     process *node = (process*) malloc(sizeof(process));
@@ -34,15 +35,16 @@ process *createProcess(int brust, int arrival, int priority){
     order++;
     node->next = NULL; 
     node->finished = false;
+    node->waiting_time = 0;
     return node;
 }
 
 void delete_list(process **header) {
-    Process* current = *header;
-    Process* next;
-    while (current != NULL) {
+    Process *current = *header;
+    Process *next;
+    while (current) {
         next = current->next;
-        free(current);
+        free(current);  
         current = next;
     }
     *header = NULL;
@@ -53,57 +55,59 @@ void sort_process_arrival(process **header, int brust, int arrival, int priority
     if (*header == NULL || new_p->arrival_time < (*header)->arrival_time) {
         new_p->next = *header;
         *header = new_p;
+        // printf("\nP%d\n", new_p->order);
         return;
     }
     Process *current = *header;
     while (current->next != NULL && current->next->arrival_time <= new_p->arrival_time) {
+        // printf("\nP%d\n", new_p->order);
         current = current->next;
     }
     if (current->next != NULL){
         Process *next = current->next;
         new_p->next = next;
     }
-    printf("\nP%d\n", current->order);
+    // printf("\nP%d\n", new_p->order);
     current->next = new_p;
 }
 
-void sort_process_shortest(process **header, int brust, int arrival, int priority) {
-    Process *new_p = createProcess(brust, arrival, priority);
-    if (*header == NULL || new_p->brust_time < (*header)->brust_time) {
-        new_p->next = *header;
-        *header = new_p;
-        return;
-    }
-    Process *current = *header;
-    while (current->next != NULL && current->next->brust_time <= new_p->brust_time) {
-        current = current->next;
-    }
-    if (current->next != NULL){
-        Process *next = current->next;
-        new_p->next = next;
-    }
-    printf("\nP%d\n", current->order);
-    current->next = new_p;
-}
+// void sort_process_shortest(process **header, int brust, int arrival, int priority) {
+//     Process *new_p = createProcess(brust, arrival, priority);
+//     if (*header == NULL || new_p->brust_time < (*header)->brust_time) {
+//         new_p->next = *header;
+//         *header = new_p;
+//         return;
+//     }
+//     Process *current = *header;
+//     while (current->next != NULL && current->next->brust_time <= new_p->brust_time) {
+//         current = current->next;
+//     }
+//     if (current->next != NULL){
+//         Process *next = current->next;
+//         new_p->next = next;
+//     }
+//     printf("\nP%d\n", current->order);
+//     current->next = new_p;
+// }
 
-void sort_process_priority(process **header, int brust, int arrival, int priority) {
-    Process *new_p = createProcess(brust, arrival, priority);
-    if (*header == NULL || new_p->priority < (*header)->priority) {
-        new_p->next = *header;
-        *header = new_p;
-        return;
-    }
-    Process *current = *header;
-    while (current->next != NULL && current->next->priority <= new_p->priority) {
-        current = current->next;
-    }
-    if (current->next != NULL){
-        Process *next = current->next;
-        new_p->next = next;
-    }
-    printf("\nP%d\n", current->order);
-    current->next = new_p;
-}
+// void sort_process_priority(process **header, int brust, int arrival, int priority) {
+//     Process *new_p = createProcess(brust, arrival, priority);
+//     if (*header == NULL || new_p->priority < (*header)->priority) {
+//         new_p->next = *header;
+//         *header = new_p;
+//         return;
+//     }
+//     Process *current = *header;
+//     while (current->next != NULL && current->next->priority <= new_p->priority) {
+//         current = current->next;
+//     }
+//     if (current->next != NULL){
+//         Process *next = current->next;
+//         new_p->next = next;
+//     }
+//     printf("\nP%d\n", current->order);
+//     current->next = new_p;
+// }
 
 int main(int argc, char *argv[]) {
 
@@ -137,16 +141,18 @@ int main(int argc, char *argv[]) {
                 exit(1);
         }
     }
-
+    int burst,arrival,priority;
     Process *header = NULL;
     bool p_mode = false;
     int option;
-    
+    FILE *output_file = fopen(output_fname, "a");
+    FILE *input_file = fopen(input_fname, "r");
+    while (fscanf(input_file, "%d:%d:%d\n", &burst, &arrival, &priority) != EOF) {
+        sort_process_arrival(&header, burst, arrival, priority);
+    }
+    fclose(input_file); 
 
     while(1){
-    int burst,arrival,priority;
-    FILE *input_file = fopen(input_fname, "r");
-    FILE *output_file = fopen(output_fname, "a"); 
     printf("                    CPU Scheduler Simulator");
     printf("\n1) Scheduling Method (%s)\n2) Preemptive Mode (%s)\n3) Show Results\n4) End Program", method, p_mode? "On":"Off");
     printf("\noption > ");
@@ -172,7 +178,7 @@ int main(int argc, char *argv[]) {
         case 2:
             p_mode = !p_mode;
             break;
-        case 3:     
+        case 3:      
             if (input_file == NULL) {
                 printf("Error opening input file\n");
                 exit(1);
@@ -183,41 +189,21 @@ int main(int argc, char *argv[]) {
             }
 
             if(method == fcfs){
-                delete_list(&header);
-                while (fscanf(input_file, "%d:%d:%d\n", &burst, &arrival, &priority) != EOF) {
-                    sort_process_arrival(&header, burst, arrival, priority);
-                }
-                fclose(input_file);
                 p_mode = false;
                 first_come_first_served(header);
                 show_output(header, method, p_mode, output_file);
             }else if(method == sjf){
-                delete_list(&header);
-                while (fscanf(input_file, "%d:%d:%d\n", &burst, &arrival, &priority) != EOF) {
-                    sort_process_shortest(&header, burst, arrival, priority);
-                }
-                fclose(input_file);
                 shortest_job_first(header);
-                show_output(header, method, p_mode, output_file);                
+                show_output(header, method, p_mode, output_file);          
             }else if(method == p){
-                delete_list(&header);
-                while (fscanf(input_file, "%d:%d:%d\n", &burst, &arrival, &priority) != EOF) {
-                    sort_process_priority(&header, burst, arrival, priority);
-                }
-                fclose(input_file);
                 priority_sch(header);
                 show_output(header, method, p_mode, output_file);
             }else if(method == rr){
-                delete_list(&header);
-                while (fscanf(input_file, "%d:%d:%d\n", &burst, &arrival, &priority) != EOF) {
-                    sort_process_arrival(&header, burst, arrival, priority);
-                }
-                fclose(input_file);
                 p_mode = false;
                 round_robin(header, q_value);
                 show_output(header, method, p_mode, output_file);
             }
-            fclose(output_file);
+            exit(1);
             break;
         case 4:
             exit(0);
@@ -225,7 +211,8 @@ int main(int argc, char *argv[]) {
         default:
             printf("invalid input, pick an option from 1-4\n");
             break;
-    }
+        }
+        // delete_list(&header);
     }
 
 }
@@ -262,22 +249,40 @@ int main(int argc, char *argv[]) {
     //     }
     // }
 
-    void shortest_job_first(Process *header) {
+    void shortest_job_first(Process *header, bool p_mode) {
         Process *current = header;
         int total_t = 0;
-        while(current){
-            if(total_t >= current->arrival_time){ 
-                current->waiting_time = 0;
+        while(current && current->next){
+            if(total_t >= current->arrival_time){ // checking if process arrived
+                if(current->arrival_time != current->next->arrival_time){
+                    // run current(first) process
+                    current->finished = true;
+                    total_t += current->brust_time;
+                    current = current->next;
+                }else{
+                    if(current->next->finished || current->brust_time < current->next->brust_time){
+                        // run current(first) process
+                        current->finished = true;
+                        total_t += current->brust_time;
+                        current = current->next;
+                    }else{ 
+                        // run current->next process
+                        current->finished = true; 
+                        current->next->waiting_time = current->waiting_time;
+                        total_t += current->brust_time;
+                        current = current->next;
+                    }
+                }
             }else{
-                current->waiting_time = current->arrival_time - total_t;
-                total_t = current->waiting_time + total_t;
+                current->waiting_time++;
+                total_t++;
             }
-            total_t = current->brust_time + total_t;
-            current = current->next; 
         }
+        total_t = total_t + current->brust_time;
+        current->finished = true;
     }
 
-    void priority_sch(Process *header) {
+    void priority_sch(Process *header, bool p_mode) {
         Process *current = header;
         int total_t = 0;
         while(current){
@@ -307,7 +312,7 @@ int main(int argc, char *argv[]) {
         fprintf(output_file, "\noutputs%d\n");
         printf("\nScheduling Method: %s %s\n", method, p_mode ? "Preemptive" : "Non preemptive");
         printf("Process Waiting Times:\n");
-        int total_wait = 0, count = 0;
+        float total_wait = 0, count = 0;
         while (current) {
             total_wait += current->waiting_time;
             printf("P%d %d ms\n", current->order, current->waiting_time);
@@ -316,5 +321,5 @@ int main(int argc, char *argv[]) {
             count++;
         }
         float avg_wait = total_wait / count;
-        printf("Average Waiting Time: %.2f ms\n", avg_wait);
+        printf("Average Waiting Time: %f ms\n", avg_wait);
     }
