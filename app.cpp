@@ -24,7 +24,7 @@ void shortest_job_first(Process *header, bool p_mode);
 void priority_sch(Process *header, bool p_mode);
 void round_robin(Process *header, int Q_value);
 void show_output(Process *header, char *method, bool p_mode, FILE *output_file);
-// Process *get_priority_process(Process *header);
+Process *get_priority_job(Process *header, bool p_mode);
 Process *get_shortest_job(Process *header, bool p_mode);
 
 process *createProcess(int brust, int arrival, int priority){
@@ -209,7 +209,7 @@ int main(int argc, char *argv[]){
                 printf("\nrun 1\n");
                 current->executed = true;
                 timer += current->brust_time;
-            }else if(timer > current->arrival_time){ // error: never entered
+            }else if(timer > current->arrival_time){
                 printf("\nrun 2\n");
                 current->executed = true;
                 current->waiting_time = timer - current->arrival_time;
@@ -222,40 +222,28 @@ int main(int argc, char *argv[]){
     }
 
     void priority_sch(Process *header, bool p_mode){
-        Process *current = header;
         int timer = 0;
-
-        while(current){
-            // Check if the process has arrived
-            if (current->arrival_time <= timer){
-                // Process the arrived process
-                int remainingTime = current->brust_time - current->time_left;
-                current->waiting_time = timer - current->arrival_time - remainingTime;
-
-                // Execute the process
-                if (p_mode){
-                    // If preemptive mode is on, execute the process until completion
-                    printf("Executing process P%d from time %d to %d\n", current->order, timer, timer + current->time_left);
-                    timer += current->time_left;
-                    current->time_left = 0;
-                }else{
-                    // If preemptive mode is off, execute the process for its entire burst time
-                    printf("Executing process P%d from time %d to %d\n", current->order, timer, timer + current->brust_time);
-                    timer += current->brust_time;
-                    current->time_left = 0;
-                }
-
-                // Mark the process as executed
+        while(1){
+            Process *current = get_priority_job(header, p_mode);
+            if(current) printf("\n got process %d\n", current->order);
+            if(current == NULL){
+                printf("\nlist finished\n");
+                return;
+            }
+            if(timer == current->arrival_time){
+                printf("\nrun 1\n");
                 current->executed = true;
+                timer += current->brust_time;
+            }else if(timer > current->arrival_time){
+                printf("\nrun 2\n");
+                current->executed = true;
+                current->waiting_time = timer - current->arrival_time;
+                timer += current->brust_time;
             }else{
-                // If no process has arrived, increment the timer
+                printf("\n timer updated \n");
                 timer++;
             }
-
-            // Move to the next process
-            current = current->next;
         }
-
     }
 
     void round_robin(Process *header, int Q_value){ // does preemptive mode apply with round-robin quantem time?!
@@ -292,7 +280,6 @@ int main(int argc, char *argv[]){
             }else if(current->executed){ // check if process is executed
                 if(current->next == NULL) return shortest;
                 current = current->next;
-                // shortest = current;
             }else{
                 if(shortest){ // if shortest exists
                     if(shortest->arrival_time < current->arrival_time){
@@ -313,4 +300,38 @@ int main(int argc, char *argv[]){
             }
         }
         return shortest;
+    }
+
+    Process *get_priority_job(Process *header, bool p_mode){
+        if(!header){
+            return NULL;
+        }
+        Process *current = header;
+        Process *prioritized = NULL;
+        while(1){
+            if(!current){
+                return prioritized;
+            }else if(current->executed){ // check if process is executed
+                if(current->next == NULL) return prioritized;
+                current = current->next;
+            }else{
+                if(prioritized){ // if prioritized exists
+                    if(prioritized->arrival_time < current->arrival_time){
+                       return prioritized;
+                    }else if(prioritized->arrival_time = current->arrival_time){
+                        if(prioritized->priority <= current->priority){
+                            current = current->next;
+                        }else{
+                            prioritized = current;
+                            current = current->next;
+                        }
+                    }
+                }else{ // assign a prioritized if no prioritized exists
+                    prioritized = current;
+                    current = current->next;
+                }
+                
+            }
+        }
+        return prioritized;
     }
