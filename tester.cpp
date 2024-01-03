@@ -39,7 +39,7 @@ void print_list(Process *header){
     }
 }
 
-Process *get_shortest_job(Process *header){
+Process *get_shortest_job(Process *header){ // returns shortest arrived process that is not executed yet
         if(!header){
             return NULL;
         }
@@ -51,7 +51,6 @@ Process *get_shortest_job(Process *header){
             }else if(current->executed){ // check if process is executed
                 if(current->next == NULL) return shortest;
                 current = current->next;
-                // shortest = current;
             }else{
                 if(shortest){ // if shortest exists
                     if(shortest->arrival_time < current->arrival_time){
@@ -72,39 +71,87 @@ Process *get_shortest_job(Process *header){
             }
         }
         return shortest;
-        
 }
+
 
 void shortest_job_first(Process *header){
         int timer = 0;
         while(1){
-            Process *current = get_shortest_job(header);
+            Process *current = get_shortest_job(header); // returns shortest (lowest brust) arrived process that is not executed yet
+            if(current) printf("\n got process %d\n", current->order);
+            if(current == NULL)return;
+            if(timer == current->arrival_time){ // process running 
+                current->brust_time--;
+                    current->arrival_time++;
+                    if(current->brust_time == 0){
+                    current->executed = true;
+                        printf("\n process %d is finished", current->order);
+                    }
+            }else if(timer > current->arrival_time){  // process running 
+                current->brust_time--;
+                    current->arrival_time++;
+                    if(current->brust_time == 0){
+                    current->executed = true;
+                        printf("\n process %d is finished", current->order);
+                    }
+            }
+            // Updating the waiting time for all processes that arrived but not finished except for current as it was running
+            Process *temp = header;
+            while (temp) {
+                if (temp != current && !temp->executed && temp->arrival_time <= timer) {
+                    temp->waiting_time++;
+                }
+                temp = temp->next;
+            }
+            timer++;
+            printf("\ntime updated\n");
+        }
+    }
+
+
+void priority_sch(Process *header, bool p_mode){
+        int timer = 0;
+        while(1){
+            Process *current = get_priority_job(header, p_mode); // returns piority arrived process that is not executed yet
+            if(current) printf("\n got process %d\n", current->order);
             if(current == NULL){
                 printf("\nlist finished\n");
                 return;
             }
-            if(timer == current->arrival_time){
-                printf("\nrun 1\n");
-                current->executed = true;
-            }else if(timer > current->arrival_time){
-                printf("\nrun 2\n");
-                current->executed = true;
-                current->waiting_time = timer - current->arrival_time;
-            }else{
-                printf("\n timer updated \n");
-                timer++;
+            if(timer == current->arrival_time){ // process running 
+                current->brust_time--;
+                    current->arrival_time++;
+                    if(current->brust_time == 0){
+                    current->executed = true;
+                        printf("\n process %d is finished", current->order);
+                    }
+            }else if(timer > current->arrival_time){  // process running 
+                    current->brust_time--;
+                    current->arrival_time++;
+                    if(current->brust_time == 0){
+                    current->executed = true;
+                        printf("\n process %d is finished", current->order);
+                    }
             }
+            Process *temp = header;
+            while (temp) {
+                if (temp != current && !temp->executed && temp->arrival_time <= timer) {
+                    temp->waiting_time++;
+                }
+                temp = temp->next;
+            }
+            timer++;
+            printf("\ntime updated\n");
         }
-}
-
+    }
 int main(){
     // 5:0:3 P1
     // 4:1:2 P2
     // 3:1:1 P3
     // 4:2:2 P4
     // 3:3:1 P5
-    int arr[15] = {5, 0, 3,
-                   4, 1, 2,
+    int arr[15] = {10, 0, 3,
+                   5, 1, 2,
                    3, 1, 1,
                    4, 2, 2,
                    3, 3, 1};
