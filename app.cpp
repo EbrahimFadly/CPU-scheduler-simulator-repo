@@ -19,7 +19,7 @@ typedef struct process{
 static int order = 1;
 
 void first_come_first_served(Process *header);
-void round_robin(Process *header, int Q_value);
+void round_robin(Process *header, int q_value);
 void show_output(Process *header, char *method, bool p_mode, FILE *output_file);
 Process *get_process(Process *header, int timer, bool atr);
 void shortest_job_first(Process *header, bool p_mode, bool atr);
@@ -161,7 +161,6 @@ int main(int argc, char *argv[]){
                 priority_sch(header, p_mode, true);
                 show_output(header, method, p_mode, output_file);
             }else if(method == rr){
-                p_mode = false;
                 round_robin(header, q_value);
                 show_output(header, method, p_mode, output_file);
             }
@@ -221,7 +220,7 @@ int main(int argc, char *argv[]){
         }
     }
 
-    void priority_sch(Process *header, bool p_mode, bool atr){ // Complete
+    void priority_sch(Process *header, bool p_mode, bool atr){ 
         int timer = 0;
         while(1){
             Process *current = get_process(header, timer, atr);
@@ -248,9 +247,49 @@ int main(int argc, char *argv[]){
         }
     }
     
-    void round_robin(Process *header, int Q_value){ // should be similar to shortest job first preemptive but should get the next job thats not finished and timer should be incrmented by quantem instead of timer++
+    void round_robin(Process *header, int q_value){ // not working
         Process *current = header;
-        int total_t = 0;
+        int timer = 0, ran_for = 0;
+        while(1){
+            // if(!current) current = header;
+            if(current->executed) current = current->next;
+            if(current->arrival_time > timer){
+                current->waiting_time = timer - current->arrival_time;
+                timer++;
+                printf("\ntest 1\n");
+            }else{
+                if(q_value > current->brust_time){
+                    printf("\ntest 2\n");
+                    ran_for = 0;
+                    while(current->brust_time > 0){
+                        current->brust_time--;
+                        ran_for++;
+                    }
+                    current->executed = true;
+                }else{
+                    printf("\ntest 3\n");
+                    ran_for = q_value;
+                    current->brust_time -= q_value;
+                }
+            }
+            if(current->brust_time == 0) current->executed = true;
+            Process *temp = header;
+            while(temp){
+                if (temp != current && !temp->executed && temp->arrival_time <= timer) temp->waiting_time += ran_for;
+                temp = temp->next;
+            }
+
+            if(!current){
+                current = header;
+                bool finished = true;
+                while(current){
+                    if(!current->executed) finished = false;
+                    current = current->next;
+                }
+                if(finished) return;
+            }
+            timer += ran_for;
+        }
     }
     
     void show_output(Process *header, char *method, bool p_mode, FILE *output_file){
