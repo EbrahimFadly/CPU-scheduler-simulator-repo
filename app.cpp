@@ -25,7 +25,7 @@ void shortest_job_first(Process *header);
 void priority_sch(Process *header);
 void round_robin(Process *header, int Q_value);
 void show_output(Process *header, char *method, bool p_mode, FILE *output_file);
-Process *get_priority_job(Process *header);
+Process *get_priority_job(Process *header, int timer);
 Process *get_shortest_job(Process *header);
 void shortest_job_first_preemptive(Process *header);
 void priority_sch_preemptive(Process *header);
@@ -206,22 +206,28 @@ int main(int argc, char *argv[]){
     void shortest_job_first(Process *header){
         int timer = 0;
         while(1){
-            Process *current = get_shortest_job(header); // returns shortest arrived process that is not executed yet
-            if(current) printf("\n got process %d\n", current->order);
-            if(current == NULL){
-                printf("\nlist finished\n");
-                return;
+            Process *current = get_shortest_job(header); // returns shortest (lowest brust) arrived process that is not executed yet
+            // if(current) printf("\n got process %d\n", current->order);
+            if(current == NULL)return;
+            if(timer >= current->arrival_time){ // process running 
+                    current->brust_time--;
+                    // current->arrival_time++; // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Problem!!!!!!!
+                    printf("\n ran process %d for second", current->order);
+                    if(current->brust_time == 0){
+                        current->executed = true;
+                        printf("\n process %d is finished", current->order);
+                    }
             }
-            if(timer == current->arrival_time){ // process running 
-                current->executed = true;
-            }else if(timer > current->arrival_time){  // process running 
-                current->executed = true;
-                current->waiting_time = timer - current->arrival_time;
-            }else{ // not arrived yet
-                printf("\n timer updated \n");
-                timer++;
+            // Updating the waiting time for all processes that arrived but not finished except for current as it was running
+            Process *temp = header;
+            while (temp) {
+                if (temp != current && !temp->executed && temp->arrival_time <= timer) {
+                    temp->waiting_time++;
+                    printf("\nupdated P%d waiting time\n", temp->order);
+                }
+                temp = temp->next;
             }
-            timer += current->brust_time;
+            ++timer;
         }
     }
 
@@ -256,21 +262,12 @@ int main(int argc, char *argv[]){
     void priority_sch(Process *header){
         int timer = 0;
         while(1){
-            Process *current = get_priority_job(header); // returns piority arrived process that is not executed yet
-            if(current) printf("\n got process %d\n", current->order);
-            if(current == NULL){
-                printf("\nlist finished\n");
-                return;
-            }
-            if(timer == current->arrival_time){ // process running 
-                current->executed = true;
-            }else if(timer > current->arrival_time){ // process running 
-                current->executed = true;
-                current->waiting_time = timer - current->arrival_time;
-            }else{
-                printf("\n timer updated \n");
-                timer++;
-            }
+            Process *current = get_priority_job(header, timer); // returns piority arrived process that is not executed yet
+            if(current->executed) return;
+            printf("\n got process %d\n", current->order);
+            if(current->arrival_time > timer) timer = current->arrival_time;
+            current->executed = true;
+            current->waiting_time = timer - current->arrival_time;
             timer += current->brust_time;
         }
     }
@@ -278,12 +275,12 @@ int main(int argc, char *argv[]){
     void priority_sch_preemptive(Process *header){
         int timer = 0;
         while(1){
-            Process *current = get_priority_job(header); // returns piority arrived process that is not executed yet
+            Process *current = get_priority_job(header, timer); // returns piority arrived process that is not executed yet
             if(current) printf("\n got process %d\n", current->order);
             if(current == NULL)return;
             if(timer >= current->arrival_time){ // process running 
                     current->brust_time--;
-                    current->arrival_time++; // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Problem!!!!!!!
+                    // current->arrival_time++; // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Problem!!!!!!!
                     if(current->brust_time == 0){
                         current->executed = true;
                         printf("\n process %d is finished", current->order);
@@ -335,7 +332,7 @@ int main(int argc, char *argv[]){
             }else{
                 if(shortest){ // if shortest exists
                     if(shortest->arrival_time < current->arrival_time)return shortest;
-                    if(shortest->arrival_time = current->arrival_time){
+                    if(shortest->arrival_time == current->arrival_time){
                         if(shortest->brust_time <= current->brust_time){
                             current = current->next;
                         }else{
@@ -353,34 +350,15 @@ int main(int argc, char *argv[]){
         return shortest;
     }
 
-    Process *get_priority_job(Process *header){
-        if(!header){
-            return NULL;
-        }
+    Process *get_priority_job(Process *header, int timer){
         Process *current = header;
-        Process *prioritized = NULL;
-        while(1){
-            if(!current)return prioritized;
-            if(current->executed){ // check if process is executed
-                if(current->next == NULL) return prioritized;
-                current = current->next;
-            }else{
-                if(prioritized){ // if prioritized exists
-                    if(prioritized->arrival_time < current->arrival_time)return prioritized;
-                    if(prioritized->arrival_time = current->arrival_time){
-                        if(prioritized->priority <= current->priority){
-                            current = current->next;
-                        }else{
-                            prioritized = current;
-                            current = current->next;
-                        }
-                    }
-                }else{ // assign a prioritized if no prioritized exists
-                    prioritized = current;
-                    current = current->next;
-                }
-                
+        Process *prioritized = current;
+        while (current && current->arrival_time <= timer) {
+            if(!current->executed && current->priority < prioritized->priority) prioritized = current;
+            if(current->executed && prioritized == current && current->next){
+                prioritized = current->next;
             }
+            current = current->next;
         }
         return prioritized;
     }
