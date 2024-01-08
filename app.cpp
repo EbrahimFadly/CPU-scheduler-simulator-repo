@@ -18,17 +18,12 @@ typedef struct process{
 
 static int order = 1;
 
-void scheduling_method();
-void normal_scheduling();
 void first_come_first_served(Process *header);
-void shortest_job_first(Process *header);
-void priority_sch(Process *header);
 void round_robin(Process *header, int Q_value);
 void show_output(Process *header, char *method, bool p_mode, FILE *output_file);
-Process *get_priority_job(Process *header, int timer);
-Process *get_shortest_job(Process *header, int timer);
-void shortest_job_first_preemptive(Process *header);
-void priority_sch_preemptive(Process *header);
+Process *get_process(Process *header, int timer, bool atr);
+void shortest_job_first(Process *header, bool p_mode, bool atr);
+void priority_sch(Process *header, bool p_mode, bool atr);
 
 
 process *createProcess(int brust, int arrival, int priority){
@@ -62,19 +57,16 @@ void sort_process_arrival(process **header, int brust, int arrival, int priority
     if (*header == NULL || new_p->arrival_time < (*header)->arrival_time){
         new_p->next = *header;
         *header = new_p;
-        // printf("\nP%d\n", new_p->order);
         return;
     }
     Process *current = *header;
     while(current->next != NULL && current->next->arrival_time <= new_p->arrival_time){
-        // printf("\nP%d\n", new_p->order);
         current = current->next;
     }
     if (current->next != NULL){
         Process *next = current->next;
         new_p->next = next;
     }
-    // printf("\nP%d\n", new_p->order);
     current->next = new_p;
 }
 
@@ -114,6 +106,7 @@ int main(int argc, char *argv[]){
     Process *header = NULL;
     bool p_mode = false;
     int option;
+    bool atr = false;
     FILE *output_file = fopen(output_fname, "a");
     FILE *input_file = fopen(input_fname, "r");
     while(fscanf(input_file, "%d:%d:%d\n", &burst, &arrival, &priority) != EOF){
@@ -162,12 +155,10 @@ int main(int argc, char *argv[]){
                 first_come_first_served(header);
                 show_output(header, method, p_mode, output_file);
             }else if(method == sjf){
-                if(!p_mode) shortest_job_first(header);
-                if(p_mode) shortest_job_first_preemptive(header);
+                shortest_job_first(header, p_mode, false);
                 show_output(header, method, p_mode, output_file);      
             }else if(method == p){
-                if(!p_mode) priority_sch(header);
-                if(p_mode) priority_sch_preemptive(header);
+                priority_sch(header, p_mode, true);
                 show_output(header, method, p_mode, output_file);
             }else if(method == rr){
                 p_mode = false;
@@ -203,81 +194,60 @@ int main(int argc, char *argv[]){
         }
     }
 
-    void shortest_job_first(Process *header){ // Complete
+    void shortest_job_first(Process *header, bool p_mode, bool atr){
         int timer = 0;
         while(1){
-            Process *current = get_shortest_job(header, timer);
+            Process *current = get_process(header, timer, atr);
             if(current->executed) return;
-            printf("\n got process %d\n", current->order);
-            if(current->arrival_time > timer) timer = current->arrival_time;
-            current->executed = true;
-            current->waiting_time = timer - current->arrival_time;
-            timer += current->brust_time;
-        }
-    }
-
-    void shortest_job_first_preemptive(Process *header){
-        int timer = 0;
-        while(1){
-            Process *current = get_shortest_job(header, timer);
-            if(current->executed) return;
-            printf("\n got process %d\n", current->order);
-            if(current->arrival_time > timer){
-                current->waiting_time = timer - current->arrival_time + 1;
-            }else{
-                current->brust_time--;
-            }
-            if(current->brust_time == 0) current->executed = true;
-            Process *temp = header;
-            while (temp) {
-                if (temp != current && !temp->executed && temp->arrival_time <= timer) {
-                    temp->waiting_time++;
-                }
-                temp = temp->next;
-            }
-            timer++;
-        }
-    }
-
-    void priority_sch(Process *header){ // Complete
-        int timer = 0;
-        while(1){
-            Process *current = get_priority_job(header, timer); // returns piority arrived process that is not executed yet
-            if(current->executed) return;
-            printf("\n got process %d\n", current->order);
-            if(current->arrival_time > timer) timer = current->arrival_time;
-            current->executed = true;
-            current->waiting_time = timer - current->arrival_time;
-            timer += current->brust_time;
-        }
-    }
-
-    void priority_sch_preemptive(Process *header){
-        int timer = 0;
-        while(1){
-            Process *current = get_priority_job(header, timer); // returns piority arrived process that is not executed yet
-            if(current) printf("\n got process %d\n", current->order);
-            if(current == NULL)return;
-            if(timer >= current->arrival_time){ // process running 
+            if(p_mode){// ----------------------Preemptive----------------------
+                if(current->arrival_time > timer){
+                    current->waiting_time = timer - current->arrival_time + 1;
+                }else{
                     current->brust_time--;
-                    // current->arrival_time++; // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Problem!!!!!!!
-                    if(current->brust_time == 0){
-                        current->executed = true;
-                        printf("\n process %d is finished", current->order);
-                    }
-            }
-            Process *temp = header;
-            while (temp) {
-                if (temp != current && !temp->executed && temp->arrival_time <= timer) {
-                    temp->waiting_time++;
                 }
-                temp = temp->next;
+                if(current->brust_time == 0) current->executed = true;
+                Process *temp = header;
+                while(temp){
+                    if (temp != current && !temp->executed && temp->arrival_time <= timer) temp->waiting_time++;
+                    temp = temp->next;
+                }
+                timer++;
+            }else{// ----------------------Non-Preemptive----------------------
+                if(current->arrival_time > timer) timer = current->arrival_time;
+                current->executed = true;
+                current->waiting_time = timer - current->arrival_time;
+                timer += current->brust_time;
             }
-            timer++;
-            printf("\ntime updated\n");
         }
     }
 
+    void priority_sch(Process *header, bool p_mode, bool atr){ // Complete
+        int timer = 0;
+        while(1){
+            Process *current = get_process(header, timer, atr);
+            if(current->executed) return;
+            if(p_mode){// ----------------------Preemptive----------------------
+                if(current->arrival_time > timer){
+                    current->waiting_time = timer - current->arrival_time + 1;
+                }else{
+                    current->brust_time--;
+                }
+                if(current->brust_time == 0) current->executed = true;
+                Process *temp = header;
+                while(temp){
+                    if (temp != current && !temp->executed && temp->arrival_time <= timer) temp->waiting_time++;
+                    temp = temp->next;
+                }
+                timer++;
+            }else{// ----------------------Non-Preemptive----------------------
+                if(current->arrival_time > timer) timer = current->arrival_time;
+                current->executed = true;
+                current->waiting_time = timer - current->arrival_time;
+                timer += current->brust_time;
+            }
+        }
+    }
+    
     void round_robin(Process *header, int Q_value){ // should be similar to shortest job first preemptive but should get the next job thats not finished and timer should be incrmented by quantem instead of timer++
         Process *current = header;
         int total_t = 0;
@@ -300,28 +270,16 @@ int main(int argc, char *argv[]){
         printf("Average Waiting Time: %f ms\n", avg_wait);
     }
 
-    Process *get_shortest_job(Process *header, int timer){ // returns shortest arrived process that is not executed yet
+    Process *get_process(Process *header, int timer, bool atr){ // returns the process based on attribute {true = priority, false = brust} 
         Process *current = header;
-        Process *shortest = current;
+        Process *returned_process = current;
         while (current && current->arrival_time <= timer) {
-            if(!current->executed && current->brust_time < shortest->brust_time) shortest = current;
-            if(current->executed && shortest == current && current->next){
-                shortest = current->next;
+            if(atr == true) if(!current->executed && current->priority < returned_process->priority) returned_process = current;
+            if(atr == false) if(!current->executed && current->brust_time < returned_process->brust_time) returned_process = current;
+            if(current->executed && returned_process == current && current->next){
+                returned_process = current->next;
             }
             current = current->next;
         }
-        return shortest;
-    }
-
-    Process *get_priority_job(Process *header, int timer){
-        Process *current = header;
-        Process *prioritized = current;
-        while (current && current->arrival_time <= timer) {
-            if(!current->executed && current->priority < prioritized->priority) prioritized = current;
-            if(current->executed && prioritized == current && current->next){
-                prioritized = current->next;
-            }
-            current = current->next;
-        }
-        return prioritized;
+        return returned_process;
     }
