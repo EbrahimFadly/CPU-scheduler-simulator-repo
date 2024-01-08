@@ -26,7 +26,7 @@ void priority_sch(Process *header);
 void round_robin(Process *header, int Q_value);
 void show_output(Process *header, char *method, bool p_mode, FILE *output_file);
 Process *get_priority_job(Process *header, int timer);
-Process *get_shortest_job(Process *header);
+Process *get_shortest_job(Process *header, int timer);
 void shortest_job_first_preemptive(Process *header);
 void priority_sch_preemptive(Process *header);
 
@@ -203,63 +203,43 @@ int main(int argc, char *argv[]){
         }
     }
 
-    void shortest_job_first(Process *header){
+    void shortest_job_first(Process *header){ // Complete
         int timer = 0;
         while(1){
-            Process *current = get_shortest_job(header); // returns shortest (lowest brust) arrived process that is not executed yet
-            // if(current) printf("\n got process %d\n", current->order);
-            if(current == NULL)return;
-            if(timer >= current->arrival_time){ // process running 
-                    current->brust_time--;
-                    // current->arrival_time++; // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Problem!!!!!!!
-                    printf("\n ran process %d for second", current->order);
-                    if(current->brust_time == 0){
-                        current->executed = true;
-                        printf("\n process %d is finished", current->order);
-                    }
-            }
-            // Updating the waiting time for all processes that arrived but not finished except for current as it was running
-            Process *temp = header;
-            while (temp) {
-                if (temp != current && !temp->executed && temp->arrival_time <= timer) {
-                    temp->waiting_time++;
-                    printf("\nupdated P%d waiting time\n", temp->order);
-                }
-                temp = temp->next;
-            }
-            ++timer;
+            Process *current = get_shortest_job(header, timer);
+            if(current->executed) return;
+            printf("\n got process %d\n", current->order);
+            if(current->arrival_time > timer) timer = current->arrival_time;
+            current->executed = true;
+            current->waiting_time = timer - current->arrival_time;
+            timer += current->brust_time;
         }
     }
 
     void shortest_job_first_preemptive(Process *header){
         int timer = 0;
         while(1){
-            Process *current = get_shortest_job(header); // returns shortest (lowest brust) arrived process that is not executed yet
-            // if(current) printf("\n got process %d\n", current->order);
-            if(current == NULL)return;
-            if(timer >= current->arrival_time){ // process running 
-                    current->brust_time--;
-                    // current->arrival_time++; // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Problem!!!!!!!
-                    printf("\n ran process %d for second", current->order);
-                    if(current->brust_time == 0){
-                        current->executed = true;
-                        printf("\n process %d is finished", current->order);
-                    }
+            Process *current = get_shortest_job(header, timer);
+            if(current->executed) return;
+            printf("\n got process %d\n", current->order);
+            if(current->arrival_time > timer){
+                current->waiting_time = timer - current->arrival_time + 1;
+            }else{
+                current->brust_time--;
             }
-            // Updating the waiting time for all processes that arrived but not finished except for current as it was running
+            if(current->brust_time == 0) current->executed = true;
             Process *temp = header;
             while (temp) {
                 if (temp != current && !temp->executed && temp->arrival_time <= timer) {
                     temp->waiting_time++;
-                    printf("\nupdated P%d waiting time\n", temp->order);
                 }
                 temp = temp->next;
             }
-            ++timer;
+            timer++;
         }
     }
 
-    void priority_sch(Process *header){
+    void priority_sch(Process *header){ // Complete
         int timer = 0;
         while(1){
             Process *current = get_priority_job(header, timer); // returns piority arrived process that is not executed yet
@@ -320,32 +300,15 @@ int main(int argc, char *argv[]){
         printf("Average Waiting Time: %f ms\n", avg_wait);
     }
 
-    Process *get_shortest_job(Process *header){ // returns shortest arrived process that is not executed yet
-        if(!header)return NULL;
+    Process *get_shortest_job(Process *header, int timer){ // returns shortest arrived process that is not executed yet
         Process *current = header;
-        Process *shortest = NULL;
-        while(1){
-            if(!current)return shortest;
-            if(current->executed){ // check if process is executed
-                if(current->next == NULL)return shortest;
-                current = current->next;
-            }else{
-                if(shortest){ // if shortest exists
-                    if(shortest->arrival_time < current->arrival_time)return shortest;
-                    if(shortest->arrival_time == current->arrival_time){
-                        if(shortest->brust_time <= current->brust_time){
-                            current = current->next;
-                        }else{
-                            shortest = current;
-                            current = current->next;
-                        }
-                    }
-                }else{ // assign a shortest if no shortest exists
-                    shortest = current;
-                    current = current->next;
-                }
-                
+        Process *shortest = current;
+        while (current && current->arrival_time <= timer) {
+            if(!current->executed && current->brust_time < shortest->brust_time) shortest = current;
+            if(current->executed && shortest == current && current->next){
+                shortest = current->next;
             }
+            current = current->next;
         }
         return shortest;
     }
