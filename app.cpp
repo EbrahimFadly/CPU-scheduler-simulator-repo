@@ -12,18 +12,17 @@ typedef struct process{
     int waiting_time;
     process *next;
     bool executed;
-    int time_left;
     int rotation;
 } Process;
 
 static int order = 1;
 
 void first_come_first_served(Process *header);
-void round_robin(Process *header, int q_value);
+void round_robin(Process *header, int q_value, int atr);
 void show_output(Process *header, char *method, bool p_mode, FILE *output_file);
-Process *get_process(Process *header, int timer, bool atr);
-void shortest_job_first(Process *header, bool p_mode, bool atr);
-void priority_sch(Process *header, bool p_mode, bool atr);
+Process *get_process(Process *header, int timer, int atr);
+void shortest_job_first(Process *header, bool p_mode, int atr);
+void priority_sch(Process *header, bool p_mode, int atr);
 
 
 process *createProcess(int brust, int arrival, int priority){
@@ -155,13 +154,13 @@ int main(int argc, char *argv[]){
                 first_come_first_served(header);
                 show_output(header, method, p_mode, output_file);
             }else if(method == sjf){
-                shortest_job_first(header, p_mode, false);
+                shortest_job_first(header, p_mode, 1);
                 show_output(header, method, p_mode, output_file);      
             }else if(method == p){
-                priority_sch(header, p_mode, true);
+                priority_sch(header, p_mode, 0);
                 show_output(header, method, p_mode, output_file);
             }else if(method == rr){
-                round_robin(header, q_value);
+                round_robin(header, q_value, 2);
                 show_output(header, method, p_mode, output_file);
             }
             exit(1);
@@ -193,7 +192,7 @@ int main(int argc, char *argv[]){
         }
     }
 
-    void shortest_job_first(Process *header, bool p_mode, bool atr){
+    void shortest_job_first(Process *header, bool p_mode, int atr){
         int timer = 0;
         while(1){
             Process *current = get_process(header, timer, atr);
@@ -220,7 +219,7 @@ int main(int argc, char *argv[]){
         }
     }
 
-    void priority_sch(Process *header, bool p_mode, bool atr){ 
+    void priority_sch(Process *header, bool p_mode, int atr){ 
         int timer = 0;
         while(1){
             Process *current = get_process(header, timer, atr);
@@ -247,48 +246,35 @@ int main(int argc, char *argv[]){
         }
     }
     
-    void round_robin(Process *header, int q_value){ // not working
+    void round_robin(Process *header, int q_value, int atr){ 
         Process *current = header;
-        int timer = 0, ran_for = 0;
+        int timer = 0, q;
         while(1){
-            // if(!current) current = header;
-            if(current->executed) current = current->next;
-            if(current->arrival_time > timer){
-                current->waiting_time = timer - current->arrival_time;
-                timer++;
-                printf("\ntest 1\n");
-            }else{
-                if(q_value > current->brust_time){
-                    printf("\ntest 2\n");
-                    ran_for = 0;
-                    while(current->brust_time > 0){
-                        current->brust_time--;
-                        ran_for++;
-                    }
-                    current->executed = true;
-                }else{
-                    printf("\ntest 3\n");
-                    ran_for = q_value;
-                    current->brust_time -= q_value;
-                }
-            }
-            if(current->brust_time == 0) current->executed = true;
-            Process *temp = header;
-            while(temp){
-                if (temp != current && !temp->executed && temp->arrival_time <= timer) temp->waiting_time += ran_for;
-                temp = temp->next;
-            }
+            // ----------------get the process based on rotation----------
 
-            if(!current){
-                current = header;
-                bool finished = true;
-                while(current){
-                    if(!current->executed) finished = false;
-                    current = current->next;
+
+            //------------------------------------------------------------
+            
+            // -------------------------Runs the process------------------
+            q = q_value;
+            while(q != 0){
+                current->brust_time--;
+                q--;
+                if(current->brust_time == 0){
+                    current->executed = true;
+                    q = 0;
                 }
-                if(finished) return;
+                // updating wait times
+                Process *temp = header;
+                while(temp){
+                    if(temp != current && !temp->executed && temp->arrival_time <= timer) temp->waiting_time++;
+                    temp = temp->next;
+                }
+                // -------------------
+                timer++;
             }
-            timer += ran_for;
+            current->rotation++;
+            // ------------------------------------------------------------       
         }
     }
     
@@ -309,12 +295,12 @@ int main(int argc, char *argv[]){
         printf("Average Waiting Time: %f ms\n", avg_wait);
     }
 
-    Process *get_process(Process *header, int timer, bool atr){ // returns the process based on attribute {true = priority, false = brust} 
+    Process *get_process(Process *header, int timer, int atr){ // returns the process based on attribute {0 = priority, 1 = brust, 2 = min rotation} 
         Process *current = header;
         Process *returned_process = current;
         while (current && current->arrival_time <= timer) {
-            if(atr == true) if(!current->executed && current->priority < returned_process->priority) returned_process = current;
-            if(atr == false) if(!current->executed && current->brust_time < returned_process->brust_time) returned_process = current;
+            if(atr == 0) if(!current->executed && current->priority < returned_process->priority) returned_process = current;
+            if(atr == 1) if(!current->executed && current->brust_time < returned_process->brust_time) returned_process = current;
             if(current->executed && returned_process == current && current->next){
                 returned_process = current->next;
             }
