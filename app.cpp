@@ -18,7 +18,7 @@ typedef struct process{
 static int order = 1;
 
 void first_come_first_served(Process *header);
-void round_robin(Process *header, int q_value, int atr);
+void round_robin(Process *header, int q_value);
 void show_output(Process *header, char *method, bool p_mode, FILE *output_file);
 Process *get_process(Process *header, int timer, int atr);
 void shortest_job_first(Process *header, bool p_mode, int atr);
@@ -35,7 +35,6 @@ process *createProcess(int brust, int arrival, int priority){
     node->next = NULL; 
     node->executed = false;
     node->waiting_time = 0;
-    node->time_left = brust;
     node->rotation = 0;
     return node;
 }
@@ -160,7 +159,8 @@ int main(int argc, char *argv[]){
                 priority_sch(header, p_mode, 0);
                 show_output(header, method, p_mode, output_file);
             }else if(method == rr){
-                round_robin(header, q_value, 2);
+                p_mode = false;
+                round_robin(header, q_value);
                 show_output(header, method, p_mode, output_file);
             }
             exit(1);
@@ -179,15 +179,11 @@ int main(int argc, char *argv[]){
 
     void first_come_first_served(Process *header){
         Process *current = header;
-        int total_t = 0;
+        int timer = 0;
         while(current){
-            if(total_t >= current->arrival_time){ 
-                current->waiting_time = 0;
-            }else{
-                current->waiting_time = current->arrival_time - total_t;
-                total_t = current->waiting_time + total_t;
-            }
-            total_t = current->brust_time + total_t;
+            if(timer <= current->arrival_time) timer = current->arrival_time;
+            current->waiting_time = timer - current->arrival_time;
+            timer += current->brust_time;
             current = current->next; 
         }
     }
@@ -246,38 +242,44 @@ int main(int argc, char *argv[]){
         }
     }
     
-    void round_robin(Process *header, int q_value, int atr){ 
+    void round_robin(Process *header, int q_value){ 
         Process *current = header;
         int timer = 0, q;
         while(1){
-            // ----------------get the process based on rotation----------
-
-
-            //------------------------------------------------------------
-            
-            // -------------------------Runs the process------------------
+            while(current->next && (current->rotation == current->next->rotation)) {
+                current = current->next;
+            }
+            if(current->next && !current->next->executed){
+                current = current->next;
+            }else if(current->next && current->next->executed){
+                current = current->next;
+            }else{
+                current = header;
+            }
+            if(current->arrival_time > timer)timer = current->arrival_time; 
             q = q_value;
-            while(q != 0){
+            while(q > 0 && current->brust_time > 0){
                 current->brust_time--;
                 q--;
-                if(current->brust_time == 0){
-                    current->executed = true;
-                    q = 0;
-                }
-                // updating wait times
+                if(current->brust_time == 0)current->executed = true;
                 Process *temp = header;
                 while(temp){
                     if(temp != current && !temp->executed && temp->arrival_time <= timer) temp->waiting_time++;
                     temp = temp->next;
                 }
-                // -------------------
                 timer++;
             }
             current->rotation++;
-            // ------------------------------------------------------------       
+            Process *tmp = header;
+            bool finished = true;
+            while(tmp){
+                if(!tmp->executed) finished = false;
+                tmp = tmp->next;
+            }
+            if(finished) return;
         }
     }
-    
+
     void show_output(Process *header, char *method, bool p_mode, FILE *output_file){
         Process *current = header;
         fprintf(output_file, "\noutputs%d\n");
