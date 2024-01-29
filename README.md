@@ -33,7 +33,9 @@ gcc -o scheduler app.cpp
 ```
 
 #### execution
-```bash./scheduler -f input_file.txt -o output_file.txt``` 
+```bash
+./scheduler -f input_file.txt -o output_file.txt
+``` 
 
 
 
