@@ -23,13 +23,13 @@ The input file should contain process details in the following format, with each
 1:2:6
 6:1:6
 ```
-The first number represents the burst time of the process. 
-The second number represents the arrival time of the process. 
-The third number represents the priority of the process.
+-  The first number represents the burst time.
+-  The second number represents the arrival time.
+-  The third number represents the priority.
 
-#### Use the command `gcc -o scheduler main.c` to compile the program.
+### Use the command `gcc -o scheduler main.c` to compile the program.
 
-#### Run the command `./scheduler -f input_file.txt -o output_file.txt` to execute the program.
+### Run the command `./scheduler -f input_file.txt -o output_file.txt` to execute the program.
 
 
 
