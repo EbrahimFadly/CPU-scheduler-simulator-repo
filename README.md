@@ -27,9 +27,14 @@ The input file should contain process details in the following format, with each
 -  The second number represents the arrival time.
 -  The third number represents the priority.
 
-### Use the command `gcc -o scheduler main.c` to compile the program.
+#### Compilation
+```bash
+gcc -o scheduler app.cpp
+```
 
-### Run the command `./scheduler -f input_file.txt -o output_file.txt` to execute the program.
+#### execution
+```bash./scheduler -f input_file.txt -o output_file.txt``` 
+
 
 
 
