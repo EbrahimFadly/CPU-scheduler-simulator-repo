@@ -6,6 +6,7 @@ The simulator supports four scheduling algorithms:
 -  Shortest Job First (SJF) 
 -  Priority Scheduling
 -  Round Robin
+
 The user can choose the scheduling method, enable or disable preemptive mode, and view the results which include process waiting times and their average waiting time.
 
 
